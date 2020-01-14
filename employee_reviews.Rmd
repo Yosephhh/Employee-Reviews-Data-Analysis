@@ -1,0 +1,253 @@
+Here are some basic information about R Notebook:
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+#####################################################
+# Author: Yoseph 
+# Date: 02-12-2019
+# Purpose: Analyze employeee reviews fro the big 6 tech compnies like Amazon, Facebook, Netflix, Apple  
+# Source Of the Dataset: https://www.kaggle.com/petersunga/google-amazon-facebook-employee-reviews
+#####################################################
+
+###Include any libararies here:
+
+```{r}
+library(dplyr) 
+library(stringr)
+
+```
+
+###Read in the data set
+
+```{r}
+##don't modify this line, make sure your data set is under the same directory
+review <-read.csv("employeeReviews.csv", stringsAsFactors = FALSE)
+```
+
+###A dataframe that contains the following information for each company
+###The number of reviews
+###the average overall ratings
+###the average work balance stars
+###the average compensation stars
+
+
+```{r}
+
+  #Get the Total Number of Reviews For Each company
+  counts <- plyr::count(data, var = "company")
+
+  names(counts) <- c("Num_Reviews", "Counts") # Rename the columns
+  
+  #library(dplyr)
+
+  #First Change the column to char values, Then to numeric values 
+  #so that the "none" values will get assigned NA values 
+  newData <- transform(data, work.balance.stars=as.character(work.balance.stars))
+  newData <- transform(newData, work.balance.stars=suppressWarnings(as.numeric(work.balance.stars)))
+  
+  # Get the Average Work Balance Stars
+  average_work_bal_stars <- newData %>% group_by(company) %>% summarise(averageWork = mean(work.balance.stars, na.rm = TRUE))
+  
+  #First Change the column to char values, Then to numeric values 
+  #so that the "none" values will get assigned NA values 
+  newData <- transform(data, comp.benefit.stars=as.character(comp.benefit.stars))
+  newData <- transform(data, comp.benefit.stars=suppressWarnings(as.numeric(comp.benefit.stars)))
+  
+  # Must assign new translated values back to newData because newData is being used repetetively (usefull because no other new variables are created!)
+  newData <- transform(data, comp.benefit.stars=as.character(comp.benefit.stars))
+  newData <- transform(newData, comp.benefit.stars=as.character(comp.benefit.stars))
+  newData <- transform(newData, comp.benefit.stars=suppressWarnings(as.numeric(comp.benefit.stars)))
+  
+  #Get the average Ratings
+  avgRatings <- newData %>% group_by(company) %>% summarize(Overall_Ratings=mean(overall.ratings, na.rm=TRUE))
+  
+  #Get the average work ratings
+  average_overall_ratings<- newData %>% group_by(company) %>% summarise(Overall_Ratings=mean(overall.ratings, na.rm = TRUE))
+  
+  #Get the Average Compenceation Benefits
+  avg_comp_ben_stars <- newData %>% group_by(company) %>% summarise(Average_Comp_Ben_Stars=mean(comp.benefit.stars, na.rm = TRUE))
+  
+  #Remove the company column usefull later -- to merge all the results into a single DF 
+  avg_comp_ben_stars <- within(avg_comp_ben_stars, rm(company))
+  average_work_bal_stars <- within(average_work_bal_stars, rm(company))
+  average_overall_ratings <- within(average_overall_ratings, rm(company))
+  names(average_work_bal_stars) <- "Average_WorkBal_Stars"
+  
+  
+  #Now Merge the single columns of the data frames above into one big data Frame
+  formatted_Result <- cbind(counts, average_overall_ratings, average_work_bal_stars, avg_comp_ben_stars)
+  
+  # Output the final Formatted List
+  print(formatted_Result)
+
+```
+
+###Displaying the pros and cons of the three most helpful reviews (based on the helpful count).
+
+
+
+```{r}
+  
+  # Sort the data according to the helpful counts
+  data <- arrange(data,desc(helpful.count))
+  
+  # Get the Top 3 Pros and Cons of Each by using indexes 
+
+  print("# 1 Most Helpful Reviews") 
+  print("Pros:")
+  print(data[1,"pros"])
+  cat("\n")
+  print("Cons:")
+  print(data[1, "cons"])
+  cat("\n\n")
+  
+  print("# 2 Most Helpful Reviews") 
+  print("Pros:")
+  print(data[2,"pros"])
+  cat("\n")
+  print("Cons:")
+  print(data[2, "cons"])
+  cat("\n\n")
+  
+  print("# 3 Most Helpful Reviews") 
+  print("Pros:")
+  print(data[3,"pros"])
+  cat("\n")
+  print("Cons:")
+  print(data[3, "cons"])
+  cat("\n\n")
+  
+```
+
+###Displaying a dataframe that contains the number of reviews (for all companies) for each month of each year.
+
+```{r}
+
+
+# Make a copy of the orriginal Data Frame
+newData1 <- data
+# Trim any Leading white space
+newData1$dates <- trimws(newData1$dates)
+
+# Format the data back to its original state ( (abriviated)month , date, year )
+newData1$dates <- as.Date(newData1$dates, format = "%b %d, %Y")
+
+
+newData1 <- mutate(newData1, Year = format(dates, "%Y"))
+newData1 <- mutate(newData1, Month = format(dates, "%m"))
+# Group data by Year and Month 
+review <- group_by(newData1, Year, Month)
+# Summarize the grouped data 
+review <- summarise(review, number=n())
+
+# Print the first 6 rows of the DF
+print(head(review) , 6)
+
+# class(newData1$dates) # to check the data type of dates
+```
+
+
+###Amazon has the most number of reviews. Out of all the reviews for Amazon, 
+###how many reviews are given by current employee?  
+###How many reviews are given by Former employee? 
+
+```{r}
+
+
+# arrange orriginal DF according to company name and stor it inside a new DF
+sorted_data_byComp <- arrange(data, company)
+
+#Get the reviews form amazon only ( Recall from Task #1, Amazon had a count of 26430)
+amazon_review <- head(sorted_data_byComp, 26430)
+
+# Arrange by Job Title
+amazon_review <- arrange(amazon_review, job.title)
+
+#Filter the Reviews form current and former employees
+
+#This will give you a df of all the reviews from current employees 
+#current_employees <- filter(amazon_review, grepl("Current Employee", job.title))
+
+#since we only need the number of employees, we can just count the rows of the resulting df.
+current_employee_counts <- nrow(filter(amazon_review, grepl("Current Employee", job.title)))
+former_employee_counts <- nrow(filter(amazon_review, grepl("Former Employee", job.title)))
+
+
+sprintf("Current Employee %d", current_employee_counts)
+sprintf("Former  Employee %d", former_employee_counts)
+
+
+```
+
+###Displaying the top six job title that gave the most number of reviews? Considering both current and former employee for each job title. 
+```{r}
+
+#library(dplyr)
+# Arrange the amazon reviews according to job title 
+job_title <- arrange(amazon_review, job.title)
+
+#library(stringr)
+
+# Split the job.title column 
+job_title <- str_split_fixed(job_title$job.title, " - ",2)
+
+# convert it to a dataframe
+job_title <- data.frame(job_title)
+# Rename the columns 
+colnames(job_title) <- c("employee", "job.title")
+# coount the number of the different job titles
+job_title_counts <- plyr::count(job_title, var="job.title")
+# Arrange the DF in accending order
+job_title_counts <- arrange(job_title_counts, -job_title_counts$freq)
+# Print the top 6 job titles according to their count 
+print(head(job_title_counts, 6))
+```
+
+
+###There are Amazon reviews from different states. What is the total number of reviews and average overall rating for each state.  
+
+```{r}
+
+
+
+#library(dplyr)
+# Arrange the orriginal DF according to location and store it into a new DF
+newData <- arrange(amazon_review, location)
+
+# Select the 2 columns to work with, namely location and overall.ratings
+newData <- select(newData, location, overall.ratings)
+
+#library(stringr)
+# Split the loaction column into two to get the city and the state separately
+state_location <- str_split_fixed(newData$location, ",",2)
+
+# Add the resulting DF into the the selected DF Above
+newData <- cbind(newData, state_location)
+# remove the old location column since we already have the split version
+newData<- within(newData, rm(location))
+#Rename the columns 
+colnames(newData) <- c("overall.ratings", "location", "State")
+
+#Group By state
+state_counts <- group_by(newData, State)
+# Summarize the grouped data and calculate the mean
+state_counts <- summarise(state_counts, number=n(), average.rating=mean(overall.ratings, na.rm=TRUE)) 
+# Arrange data accendingly 
+state_counts <- arrange(state_counts, -state_counts$number)
+
+#Print the first 10
+print(head(state_counts, 10))
+
+#review2 <- group_by(newData, location)
+
+
+
+```
