@@ -1,5 +1,5 @@
 # Employee-Reviews-Data-Analysis
-Analyzed large online dataset of employee reviews for large software companies
+Analyzed large online dataset of employee reviews from large software companies like Amazon, Facebok, Netflix ...
 
 
 ## 1.Dataframe that contains the following information for each company
